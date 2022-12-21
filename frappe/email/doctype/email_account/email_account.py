@@ -511,7 +511,7 @@ class EmailAccount(Document):
 				# process all given imap folder
 				for folder in self.imap_folder:
 					if email_server.select_imap_folder(folder.folder_name):
-						email_server.settings["uid_validity"] = folder.uidvalidity
+						email_server.settings["uid_validity"] = folder.uidvalidity or email_sync_rule
 						messages = email_server.get_messages(folder=f'"{folder.folder_name}"') or {}
 						process_mail(messages, folder.append_to)
 			else:
@@ -598,7 +598,7 @@ class EmailAccount(Document):
 
 		if self.email_sync_option == "ALL":
 			max_uid = get_max_email_uid(self.name)
-			last_uid = max_uid + int(self.initial_sync_count or 100) if max_uid == 1 else "*"
+			last_uid = "*"
 			return f"UID {max_uid}:{last_uid}"
 		else:
 			return self.email_sync_option or "UNSEEN"
@@ -837,7 +837,7 @@ def get_max_email_uid(email_account):
 		return 1
 	else:
 		max_uid = cint(result[0].get("uid", 0)) + 1
-		return max_uid
+		return max_uid if max_uid >= 1 else 1
 
 
 def setup_user_email_inbox(

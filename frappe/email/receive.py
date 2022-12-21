@@ -248,7 +248,7 @@ class EmailServer:
 			readonly = False if self.settings.email_sync_rule == "UNSEEN" else True
 
 			self.imap.select(folder, readonly=readonly)
-			response, message = self.imap.uid("search", None, self.settings.email_sync_rule)
+			response, message = self.imap.uid("search", None, self.settings.uid_validity)
 			if message[0]:
 				email_list = message[0].split()
 		else:
@@ -289,7 +289,7 @@ class EmailServer:
 
 			# uid validity not found pulling emails for first time
 			if not uid_validity:
-				self.settings.email_sync_rule = "UNSEEN"
+				self.settings["uid_validity"] = self.settings.email_sync_rule
 				return
 
 			sync_count = 100 if uid_validity else int(self.settings.initial_sync_count)
@@ -297,7 +297,7 @@ class EmailServer:
 				1 if uidnext < (sync_count + 1) or (uidnext - sync_count) < 1 else uidnext - sync_count
 			)
 			# sync last 100 email
-			self.settings.email_sync_rule = f"UID {from_uid}:{uidnext}"
+			self.settings["uid_validity"] = f"UID {from_uid}:{uidnext}"
 			self.uid_reindexed = True
 
 		elif uid_validity == current_uid_validity:
@@ -725,6 +725,10 @@ class InboundMail(Email):
 
 		if self.seen_status:
 			data["_seen"] = json.dumps(self.get_users_linked_to_account(self.email_account))
+		if self.is_sender_same_as_receiver():
+			data["sent_or_received"] = "Sent"
+		else:
+			data["sent_or_received"] = "Received"
 
 		communication = frappe.get_doc(data)
 		communication.flags.in_receive = True
